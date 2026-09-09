@@ -18,6 +18,7 @@ vim.pack.add({
   "https://github.com/lewis6991/gitsigns.nvim",
   "https://github.com/sindrets/diffview.nvim",
   "https://github.com/NeogitOrg/neogit",
+  "https://github.com/ibhagwan/fzf-lua",
 })
 
 require("copilot").setup({
@@ -36,9 +37,11 @@ require("copilot").setup({
 })
 require("sidekick").setup()
 require("diffview").setup()
+require("fzf-lua").setup()
 require("neogit").setup({
   integrations = {
     diffview = true,
+    fzf_lua = true,
   },
 })
 require("gitsigns").setup({
@@ -150,6 +153,15 @@ vim.keymap.set("n", "<Tab>", function()
     return "<Tab>"
   end
 end, { expr = true, desc = "Goto/Apply Next Edit Suggestion" })
+vim.keymap.set("n", "<leader><leader>", function()
+  require("fzf-lua").files()
+end, { desc = "Find project files" })
+vim.keymap.set("n", "<leader>/", function()
+  require("fzf-lua").live_grep()
+end, { desc = "Search project text" })
+vim.keymap.set("n", "<leader>b", function()
+  require("fzf-lua").buffers()
+end, { desc = "Find buffers" })
 vim.keymap.set("n", "<leader>gg", "<Cmd>Neogit<CR>", { desc = "Open Neogit" })
 vim.keymap.set("n", "<leader>gd", "<Cmd>DiffviewOpen<CR>", { desc = "Review Git changes" })
 vim.keymap.set("n", "<leader>gh", "<Cmd>DiffviewFileHistory %<CR>", { desc = "Git history for file" })
