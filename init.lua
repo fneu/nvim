@@ -17,7 +17,7 @@ vim.pack.add({
   "https://github.com/rafamadriz/friendly-snippets",
   "https://github.com/lewis6991/gitsigns.nvim",
   "https://github.com/sindrets/diffview.nvim",
-  "https://github.com/tpope/vim-fugitive",
+  "https://github.com/NeogitOrg/neogit",
 })
 
 require("copilot").setup({
@@ -36,6 +36,11 @@ require("copilot").setup({
 })
 require("sidekick").setup()
 require("diffview").setup()
+require("neogit").setup({
+  integrations = {
+    diffview = true,
+  },
+})
 require("gitsigns").setup({
   on_attach = function(buffer)
     local gitsigns = require("gitsigns")
@@ -145,6 +150,7 @@ vim.keymap.set("n", "<Tab>", function()
     return "<Tab>"
   end
 end, { expr = true, desc = "Goto/Apply Next Edit Suggestion" })
+vim.keymap.set("n", "<leader>gg", "<Cmd>Neogit<CR>", { desc = "Open Neogit" })
 vim.keymap.set("n", "<leader>gd", "<Cmd>DiffviewOpen<CR>", { desc = "Review Git changes" })
 vim.keymap.set("n", "<leader>gh", "<Cmd>DiffviewFileHistory %<CR>", { desc = "Git history for file" })
 vim.keymap.set("n", "<leader>gb", "<Cmd>Gitsigns blame_line<CR>", { desc = "Git blame line" })
@@ -169,4 +175,3 @@ end, { desc = "Send Visual Selection" })
 vim.keymap.set({ "n", "x" }, "<leader>ap", function()
   require("sidekick.cli").prompt()
 end, { desc = "Sidekick Select Prompt" })
-
