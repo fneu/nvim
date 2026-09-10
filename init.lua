@@ -10,6 +10,7 @@ vim.pack.add({
   "https://github.com/neovim/nvim-lspconfig",
   "https://github.com/nvim-treesitter/nvim-treesitter",
   "https://github.com/nvim-treesitter/nvim-treesitter-textobjects",
+  "https://github.com/nvim-tree/nvim-web-devicons",
   {
     src = "https://github.com/Saghen/blink.cmp",
     version = vim.version.range("1"),
@@ -36,6 +37,7 @@ require("copilot").setup({
   },
 })
 require("sidekick").setup()
+require("nvim-web-devicons").setup()
 require("diffview").setup()
 require("fzf-lua").setup()
 require("neogit").setup({
