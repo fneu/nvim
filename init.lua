@@ -38,6 +38,17 @@ vim.opt.ttimeoutlen = 100
 
 
 vim.pack.add({
+  "https://github.com/WTFox/luna.nvim",
+  "https://github.com/rebelot/kanagawa.nvim",
+  "https://github.com/EdenEast/nightfox.nvim",
+  "https://github.com/folke/tokyonight.nvim",
+  "https://github.com/neanias/everforest-nvim",
+  "https://github.com/sainnhe/sonokai",
+  "https://github.com/loctvl842/monokai-pro.nvim",
+  "https://github.com/marko-cerovac/material.nvim",
+  "https://github.com/ellisonleao/gruvbox.nvim",
+  "https://github.com/Mofiqul/vscode.nvim",
+  "https://github.com/RRethy/base16-nvim",
   "https://github.com/zbirenbaum/copilot.lua",
   "https://github.com/folke/sidekick.nvim",
   "https://github.com/neovim/nvim-lspconfig",
@@ -57,6 +68,8 @@ vim.pack.add({
   "https://github.com/tpope/vim-eunuch",
   "https://github.com/barrettruth/canola.nvim", -- oil.nvim fork with fixes (provides the `oil` module)
 })
+
+require("everforest").setup({background = "hard"})
 
 -- Treesitter (main branch): install parsers, enable highlighting and textobjects
 require("nvim-treesitter").install({
@@ -134,6 +147,9 @@ require("copilot").setup({
 require("sidekick").setup()
 require("nvim-web-devicons").setup()
 require("nvim-surround").setup()
+require("luna").setup()
+vim.cmd.colorscheme("luna")
+require("statusline").setup()
 require("oil").setup({
   keymaps = {
     ["`"] = false,
