@@ -53,7 +53,9 @@ vim.pack.add({
   "https://github.com/sindrets/diffview.nvim",
   "https://github.com/NeogitOrg/neogit",
   "https://github.com/ibhagwan/fzf-lua",
-  "https://github.com/barrettruth/canola.nvim",
+  "https://github.com/kylechui/nvim-surround",
+  "https://github.com/tpope/vim-eunuch",
+  "https://github.com/barrettruth/canola.nvim", -- oil.nvim fork with fixes (provides the `oil` module)
 })
 
 -- Treesitter (main branch): install parsers, enable highlighting and textobjects
@@ -131,6 +133,7 @@ require("copilot").setup({
 })
 require("sidekick").setup()
 require("nvim-web-devicons").setup()
+require("nvim-surround").setup()
 require("oil").setup({
   keymaps = {
     ["`"] = false,
