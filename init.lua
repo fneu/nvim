@@ -229,6 +229,31 @@ vim.api.nvim_create_autocmd("User", {
   desc = "Show Copilot after the completion menu closes",
 })
 
+-- Filetype-specific settings
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "make",
+  callback = function()
+    vim.opt_local.expandtab = false
+  end,
+  desc = "Use real tabs in Makefiles",
+})
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "html", "json", "typescript", "css", "scss" },
+  callback = function()
+    vim.opt_local.softtabstop = 2
+    vim.opt_local.shiftwidth = 2
+    vim.opt_local.expandtab = true
+  end,
+  desc = "Two-space indent for web/data filetypes",
+})
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "python",
+  callback = function()
+    vim.opt_local.colorcolumn = "99"
+  end,
+  desc = "Python column guide at 99",
+})
+
 vim.keymap.set("t", "<Esc>", "<C-\\><C-n>", { desc = "Exit Terminal mode" })
 
 vim.keymap.set("i", "<Esc>", function()
@@ -292,3 +317,27 @@ end, { desc = "Send Visual Selection" })
 vim.keymap.set({ "n", "x" }, "<leader>ap", function()
   require("sidekick.cli").prompt()
 end, { desc = "Sidekick Select Prompt" })
+vim.keymap.set("n", "<leader>as", function()
+  require("sidekick.cli").select({ focus = true })
+end, { desc = "Sidekick Switch CLI Session" })
+
+-- Wiki: plain-markdown work notes (see lua/wiki.lua)
+local wiki = require("wiki")
+vim.keymap.set("n", "<leader>ww", wiki.daily, { desc = "Wiki: today's daily note" })
+vim.keymap.set("n", "<leader>wi", wiki.index, { desc = "Wiki: open index" })
+vim.keymap.set("n", "<leader>wn", wiki.new_note, { desc = "Wiki: new topic note" })
+vim.keymap.set("n", "<leader>wf", wiki.find, { desc = "Wiki: find files" })
+vim.keymap.set("n", "<leader>w/", wiki.grep, { desc = "Wiki: grep contents" })
+vim.keymap.set("n", "<leader>wt", wiki.todos, { desc = "Wiki: open todos" })
+vim.keymap.set("n", "<leader>ws", wiki.tags, { desc = "Wiki: search by tag" })
+vim.keymap.set("n", "<leader>wd", function()
+  require("oil").open(wiki.root())
+end, { desc = "Wiki: browse root (Oil)" })
+vim.keymap.set("n", "<leader>aw", wiki.cli, { desc = "Wiki: open Copilot CLI rooted at wiki" })
+
+vim.keymap.set("i", "<C-g>d", function()
+  return os.date("%Y-%m-%d")
+end, { expr = true, desc = "Insert date" })
+vim.keymap.set("i", "<C-g>t", function()
+  return os.date("%H:%M")
+end, { expr = true, desc = "Insert time" })
