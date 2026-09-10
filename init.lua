@@ -20,6 +20,7 @@ vim.pack.add({
   "https://github.com/sindrets/diffview.nvim",
   "https://github.com/NeogitOrg/neogit",
   "https://github.com/ibhagwan/fzf-lua",
+  "https://github.com/barrettruth/canola.nvim",
 })
 
 require("copilot").setup({
@@ -38,6 +39,12 @@ require("copilot").setup({
 })
 require("sidekick").setup()
 require("nvim-web-devicons").setup()
+require("oil").setup({
+  keymaps = {
+    ["`"] = false,
+    ["gc"] = "actions.cd",
+  },
+})
 require("diffview").setup()
 require("fzf-lua").setup()
 require("neogit").setup({
@@ -155,6 +162,10 @@ vim.keymap.set("n", "<Tab>", function()
     return "<Tab>"
   end
 end, { expr = true, desc = "Goto/Apply Next Edit Suggestion" })
+vim.keymap.set("n", "-", "<Cmd>Oil<CR>", { desc = "Open Oil in current file's directory" })
+vim.keymap.set("n", "_", function()
+  require("oil").open(vim.fn.getcwd())
+end, { desc = "Open Oil in project root (cwd)" })
 vim.keymap.set("n", "<leader><leader>", function()
   require("fzf-lua").files()
 end, { desc = "Find project files" })
