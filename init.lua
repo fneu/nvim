@@ -4,6 +4,39 @@ vim.keymap.set({ "n", "x", "o" }, "ö", "[", { remap = true, desc = "Use previou
 vim.keymap.set({ "n", "x", "o" }, "ä", "]", { remap = true, desc = "Use next bracket mapping" })
 
 
+-- Editor options
+vim.opt.softtabstop = 4
+vim.opt.shiftwidth = 4
+vim.opt.expandtab = true
+
+vim.opt.ignorecase = true
+vim.opt.smartcase = true
+
+vim.opt.scrolloff = 3
+vim.opt.sidescrolloff = 5
+
+vim.opt.list = true
+vim.opt.listchars = { tab = "→ ", nbsp = "␣", trail = "·", extends = "›", precedes = "‹" }
+vim.opt.showbreak = "↪ "
+
+vim.opt.updatetime = 400
+vim.opt.showmode = false
+vim.opt.clipboard = "unnamedplus"
+
+-- Treesitter-based folding, folds open by default
+vim.opt.foldmethod = "expr"
+vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+vim.opt.foldlevelstart = 99
+
+-- Extras carried over from .vimrc
+vim.opt.undofile = true
+vim.opt.swapfile = false
+vim.opt.wildignore:append({ "*.o", "*.obj", ".git", "*.rbc", "*.pyc", "__pycache__" })
+vim.opt.shortmess:append("c")
+vim.opt.mouse = "a"
+vim.opt.ttimeoutlen = 100
+
+
 vim.pack.add({
   "https://github.com/zbirenbaum/copilot.lua",
   "https://github.com/folke/sidekick.nvim",
@@ -22,6 +55,65 @@ vim.pack.add({
   "https://github.com/ibhagwan/fzf-lua",
   "https://github.com/barrettruth/canola.nvim",
 })
+
+-- Treesitter (main branch): install parsers, enable highlighting and textobjects
+require("nvim-treesitter").install({
+  "python", "c_sharp", "lua", "vim", "vimdoc", "query",
+  "markdown", "markdown_inline", "html", "css", "scss",
+  "javascript", "typescript", "tsx", "json", "yaml", "toml", "xml",
+  "diff", "git_config", "gitcommit", "gitignore",
+  "bash", "haskell", "powershell", "dockerfile",
+})
+
+vim.api.nvim_create_autocmd("FileType", {
+  callback = function()
+    pcall(vim.treesitter.start)
+  end,
+  desc = "Start Treesitter highlighting",
+})
+
+require("nvim-treesitter-textobjects").setup({
+  select = {
+    lookahead = true,
+    selection_modes = {
+      ["@parameter.outer"] = "v",
+      ["@function.outer"] = "V",
+      ["@class.outer"] = "V",
+    },
+    include_surrounding_whitespace = false,
+  },
+  move = {
+    set_jumps = true,
+  },
+})
+
+local ts_select = require("nvim-treesitter-textobjects.select").select_textobject
+for lhs, obj in pairs({
+  af = "@function.outer",
+  ["if"] = "@function.inner",
+  ac = "@class.outer",
+  ic = "@class.inner",
+  aa = "@parameter.outer",
+  ia = "@parameter.inner",
+}) do
+  vim.keymap.set({ "x", "o" }, lhs, function()
+    ts_select(obj, "textobjects")
+  end, { desc = "Select " .. obj })
+end
+
+local ts_move = require("nvim-treesitter-textobjects.move")
+vim.keymap.set({ "n", "x", "o" }, "]f", function()
+  ts_move.goto_next_start("@function.outer", "textobjects")
+end, { desc = "Next function start" })
+vim.keymap.set({ "n", "x", "o" }, "[f", function()
+  ts_move.goto_previous_start("@function.outer", "textobjects")
+end, { desc = "Previous function start" })
+vim.keymap.set({ "n", "x", "o" }, "]F", function()
+  ts_move.goto_next_end("@function.outer", "textobjects")
+end, { desc = "Next function end" })
+vim.keymap.set({ "n", "x", "o" }, "[F", function()
+  ts_move.goto_previous_end("@function.outer", "textobjects")
+end, { desc = "Previous function end" })
 
 require("copilot").setup({
   suggestion = {
