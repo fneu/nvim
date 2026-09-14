@@ -56,14 +56,9 @@ function M.setup()
     -- Native ]d / [d already jump; open the float automatically on jump.
     jump = { float = true },
     virtual_text = { spacing = 2, source = "if_many" },
-    signs = {
-      text = {
-        [vim.diagnostic.severity.ERROR] = "❌",
-        [vim.diagnostic.severity.WARN] = "❗",
-        [vim.diagnostic.severity.INFO] = "»",
-        [vim.diagnostic.severity.HINT] = "›",
-      },
-    },
+    -- No gutter signs: the virtual text already conveys severity, and this
+    -- leaves the sign column to gitsigns.
+    signs = false,
   })
 
   vim.api.nvim_create_autocmd("LspAttach", {

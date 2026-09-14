@@ -44,9 +44,11 @@ function M.setup_highlights()
   -- Constant middle segments.
   hl("StBranch", p.grey_light, p.surface) -- branch segment
   hl("StFile", p.fg, p.bg_alt) -- filename body
-  hl("StFlag", p.keyword, p.bg_alt, { bold = true }) -- modified/readonly flags
   hl("StFill", p.fg, p.bg_alt) -- middle stretch
   hl("StSepBranchFile", p.surface, p.bg_alt) -- branch -> file
+  -- Modified/readonly flag chip on the right: grey text on orange.
+  hl("StFlagChip", p.warning, p.surface, { bold = true })
+  hl("StSepFlagFill", p.surface, p.bg_alt) -- fill -> flag chip
   -- Accent-coloured chips + their separators, one set per buffer kind.
   -- Separator fg = colour of the chip the arrow "belongs" to.
   local accents = { [""] = p.func, G = p.ok, R = p.error }
@@ -56,6 +58,7 @@ function M.setup_highlights()
     hl("StSepBufBranch" .. sfx, accent, p.surface) -- buf -> branch
     hl("StSepBufFile" .. sfx, accent, p.bg_alt) -- buf -> file (no branch)
     hl("StSepRight" .. sfx, accent, p.bg_alt) -- file -> position chip
+    hl("StSepFlagRight" .. sfx, accent, p.surface) -- flag chip -> position chip
   end
 
   -- Inactive window: same segment structure, but greyscale instead of the blue
@@ -67,8 +70,10 @@ function M.setup_highlights()
   hl("StBranchI", p.grey_light, p.surface) -- branch segment
   hl("StRightI", p.grey_light, p.surface) -- position chip (branch grey)
   hl("StFileI", p.grey_light, p.bg_alt) -- filename body
-  hl("StFlagI", p.grey, p.bg_alt) -- flags
   hl("StFillI", p.grey, p.bg_alt) -- middle stretch
+  hl("StFlagChipI", p.grey_light, p.border) -- muted flag chip
+  hl("StSepFlagFillI", p.border, p.bg_alt) -- fill -> flag chip
+  hl("StSepFlagRightI", p.surface, p.border) -- flag chip -> position chip
   hl("StSepBufFileI", p.surface, p.bg_alt) -- buf -> file (no branch)
   hl("StSepBranchFileI", p.surface, p.bg_alt) -- branch -> file
   hl("StSepRightI", p.surface, p.bg_alt) -- file -> position chip
@@ -132,15 +137,15 @@ local function path(buf)
   return vim.fn.pathshorten(head) .. "/" .. tail
 end
 
-local function flags(buf)
-  local s = ""
+local function flag_text(buf)
+  local parts = {}
   if vim.bo[buf].modified then
-    s = s .. "  +"
+    parts[#parts + 1] = "+"
   end
   if vim.bo[buf].readonly then
-    s = s .. "  " .. LOCK
+    parts[#parts + 1] = LOCK
   end
-  return s
+  return table.concat(parts, " ")
 end
 
 function M.active()
@@ -158,9 +163,15 @@ function M.active()
   end
   -- `%<` marks where truncation starts: the directory prefix is eaten first.
   out[#out + 1] = "%#StFile# %<" .. esc(path(buf))
-  out[#out + 1] = "%#StFlag#" .. esc(flags(buf))
   out[#out + 1] = "%#StFill#%="
-  out[#out + 1] = "%#StSepRight" .. sfx .. "#" .. SEP_L
+  local fl = flag_text(buf)
+  if fl ~= "" then
+    out[#out + 1] = "%#StSepFlagFill#" .. SEP_L
+    out[#out + 1] = "%#StFlagChip# " .. esc(fl) .. " "
+    out[#out + 1] = "%#StSepFlagRight" .. sfx .. "#" .. SEP_L
+  else
+    out[#out + 1] = "%#StSepRight" .. sfx .. "#" .. SEP_L
+  end
   out[#out + 1] = "%#StRight" .. sfx .. "# %l:%c  %P "
   return table.concat(out)
 end
@@ -178,9 +189,15 @@ function M.inactive()
     out[#out + 1] = "%#StSepBufFileI#" .. SEP_R
   end
   out[#out + 1] = "%#StFileI# %<" .. esc(path(buf))
-  out[#out + 1] = "%#StFlagI#" .. esc(flags(buf))
   out[#out + 1] = "%#StFillI#%="
-  out[#out + 1] = "%#StSepRightI#" .. SEP_L
+  local fl = flag_text(buf)
+  if fl ~= "" then
+    out[#out + 1] = "%#StSepFlagFillI#" .. SEP_L
+    out[#out + 1] = "%#StFlagChipI# " .. esc(fl) .. " "
+    out[#out + 1] = "%#StSepFlagRightI#" .. SEP_L
+  else
+    out[#out + 1] = "%#StSepRightI#" .. SEP_L
+  end
   out[#out + 1] = "%#StRightI# %l:%c  %P "
   return table.concat(out)
 end

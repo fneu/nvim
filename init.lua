@@ -3,6 +3,26 @@ vim.g.mapleader = " "
 vim.keymap.set({ "n", "x", "o" }, "ö", "[", { remap = true, desc = "Use previous bracket mapping" })
 vim.keymap.set({ "n", "x", "o" }, "ä", "]", { remap = true, desc = "Use next bracket mapping" })
 
+-- Center the view on the next/previous search match.
+vim.keymap.set("n", "n", "nzz", { desc = "Next search result (centered)" })
+vim.keymap.set("n", "N", "Nzz", { desc = "Previous search result (centered)" })
+
+-- Move the visual selection up/down, keeping it selected and re-indenting.
+vim.keymap.set("x", "J", ":m '>+1<CR>gv=gv", { silent = true, desc = "Move selection down" })
+vim.keymap.set("x", "K", ":m '<-2<CR>gv=gv", { silent = true, desc = "Move selection up" })
+
+-- Clear search highlight, refresh diffs, close the preview window and redraw.
+-- (Neovim's default <C-l> already does nohlsearch + diffupdate + redraw; this
+-- adds pclose to match the old vimrc behaviour.)
+vim.keymap.set("n", "<C-l>", function()
+  vim.cmd("nohlsearch")
+  if vim.wo.diff then
+    vim.cmd("diffupdate")
+  end
+  vim.cmd("pclose")
+  vim.cmd("normal! \12")
+end, { desc = "Clear highlight, update diffs, close preview, redraw" })
+
 
 -- Editor options
 vim.opt.softtabstop = 4
@@ -314,6 +334,22 @@ require("blink.cmp").setup({
   },
   sources = {
     default = { "lsp", "path", "snippets", "buffer" },
+    providers = {
+      -- friendly-snippets tags global.json to specific filetypes
+      -- (markdown/html/tex/plaintext) *and* to `all`, so in those buffers
+      -- blink loads each global snippet twice (once via the `all` global scope,
+      -- once via the filetype scope). Keep global.json only under `all`.
+      snippets = {
+        opts = {
+          filter_snippets = function(ft, file)
+            if type(file) == "string" and file:match("friendly.-snippets") and file:match("global%.json$") then
+              return ft == "all"
+            end
+            return true
+          end,
+        },
+      },
+    },
   },
 })
 
@@ -445,6 +481,9 @@ end, { desc = "Send This" })
 vim.keymap.set("n", "<leader>af", function()
   require("sidekick.cli").send({ msg = "{file}" })
 end, { desc = "Send File" })
+vim.keymap.set("n", "<leader>ad", function()
+  require("sidekick.cli").send({ msg = "{diagnostics}" })
+end, { desc = "Send Diagnostics" })
 vim.keymap.set("x", "<leader>av", function()
   require("sidekick.cli").send({ msg = "{selection}" })
 end, { desc = "Send Visual Selection" })
