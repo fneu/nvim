@@ -36,6 +36,29 @@ vim.opt.shortmess:append("c")
 vim.opt.mouse = "a"
 vim.opt.ttimeoutlen = 100
 
+-- Cursor: block in normal, vertical bar in insert *and* terminal mode. The
+-- default omits `t`, so terminal mode would otherwise inherit the block.
+vim.opt.guicursor = "n-v-c-sm:block,i-ci-ve-t:ver25,r-cr-o:hor20"
+
+-- Windows: use PowerShell for :terminal, :! and system() instead of the
+-- cmd.exe default. This is safe despite the config's heavy fzf-lua use: on
+-- Windows fzf-lua hardcodes cmd.exe for its own process spawning *and* its
+-- shell escaping, ignoring 'shell' entirely. Settings follow
+-- `:help shell-powershell`. Prefers pwsh (PowerShell 7) and falls back to the
+-- built-in powershell.exe.
+if vim.fn.has("win32") == 1 then
+  vim.o.shell = vim.fn.executable("pwsh") == 1 and "pwsh" or "powershell"
+  vim.o.shellcmdflag = table.concat({
+    "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -Command",
+    "[Console]::InputEncoding=[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;",
+    "$PSDefaultParameterValues['Out-File:Encoding']='utf8';",
+  }, " ")
+  vim.o.shellredir = '2>&1 | %%{ "$_" } | Out-File %s; exit $LastExitCode'
+  vim.o.shellpipe = '2>&1 | %%{ "$_" } | Tee-Object %s; exit $LastExitCode'
+  vim.o.shellquote = ""
+  vim.o.shellxquote = ""
+end
+
 
 vim.pack.add({
   "https://github.com/WTFox/luna.nvim",
@@ -45,6 +68,10 @@ vim.pack.add({
   "https://github.com/nvim-treesitter/nvim-treesitter",
   "https://github.com/nvim-treesitter/nvim-treesitter-textobjects",
   "https://github.com/nvim-tree/nvim-web-devicons",
+  "https://github.com/folke/which-key.nvim",
+  "https://github.com/windwp/nvim-autopairs",
+  "https://github.com/folke/todo-comments.nvim",
+  "https://github.com/j-hui/fidget.nvim",
   {
     src = "https://github.com/Saghen/blink.cmp",
     version = vim.version.range("1"),
@@ -57,6 +84,24 @@ vim.pack.add({
   "https://github.com/tpope/vim-eunuch",
   "https://github.com/tpope/vim-fugitive",
   "https://github.com/barrettruth/canola.nvim", -- oil.nvim fork with fixes (provides the `oil` module)
+  -- Tool management (LSP servers, formatters, debuggers)
+  "https://github.com/mason-org/mason.nvim",
+  "https://github.com/WhoIsSethDaniel/mason-tool-installer.nvim",
+  -- C# language server (handles Roslyn's non-standard solution/notification protocol)
+  "https://github.com/seblyng/roslyn.nvim",
+  -- Formatting
+  "https://github.com/stevearc/conform.nvim",
+  -- Debugging
+  "https://github.com/mfussenegger/nvim-dap",
+  "https://github.com/nvim-neotest/nvim-nio",
+  "https://github.com/rcarriga/nvim-dap-ui",
+  "https://github.com/theHamsta/nvim-dap-virtual-text",
+  "https://github.com/mfussenegger/nvim-dap-python",
+  -- Testing
+  "https://github.com/nvim-lua/plenary.nvim",
+  "https://github.com/nvim-neotest/neotest",
+  "https://github.com/nvim-neotest/neotest-python",
+  "https://github.com/Issafalcon/neotest-dotnet",
 })
 
 -- Treesitter (main branch): install parsers, enable highlighting and textobjects
@@ -118,26 +163,57 @@ vim.keymap.set({ "n", "x", "o" }, "[F", function()
   ts_move.goto_previous_end("@function.outer", "textobjects")
 end, { desc = "Previous function end" })
 
-require("copilot").setup({
-  suggestion = {
-    auto_trigger = true,
-    hide_during_completion = true,
-    keymap = {
-      accept = false,
-      accept_word = "<M-w>",
-      accept_line = "<M-l>",
-      next = false,
-      prev = false,
-      dismiss = false,
-    },
-  },
+-- Defer copilot until the first insert (its own README recommends
+-- `event = "InsertEnter"`). On Windows copilot.lua re-verifies its bundled
+-- language-server's NTFS ACLs on every launch by spawning two PowerShell
+-- processes; loading it lazily keeps that cost off the cold-start path.
+vim.api.nvim_create_autocmd("InsertEnter", {
+  once = true,
+  desc = "Lazy-load copilot.lua on first insert",
+  callback = function()
+    require("copilot").setup({
+      suggestion = {
+        auto_trigger = true,
+        hide_during_completion = true,
+        keymap = {
+          accept = false,
+          accept_word = "<M-w>",
+          accept_line = "<M-l>",
+          next = false,
+          prev = false,
+          dismiss = false,
+        },
+      },
+    })
+  end,
 })
 require("sidekick").setup()
 require("nvim-web-devicons").setup()
 require("nvim-surround").setup()
+-- which-key: popup that shows follow-up keys after a prefix. Groups below just
+-- label the leader prefixes; individual keys come from each mapping's `desc`.
+local wk = require("which-key")
+wk.setup({ preset = "modern", delay = 800 })
+wk.add({
+  { "<leader>a", group = "AI / Sidekick" },
+  { "<leader>g", group = "Git" },
+  { "<leader>t", group = "Test" },
+  { "<leader>d", group = "Debug" },
+})
 require("luna").setup()
 vim.cmd.colorscheme("luna")
 require("statusline").setup()
+require("nvim-autopairs").setup({})
+require("fidget").setup({})
+local todo = require("todo-comments")
+todo.setup({})
+vim.keymap.set("n", "]t", function()
+  todo.jump_next()
+end, { desc = "Next todo comment" })
+vim.keymap.set("n", "[t", function()
+  todo.jump_prev()
+end, { desc = "Previous todo comment" })
+require("bottomterm").setup()
 require("oil").setup({
   keymaps = {
     ["`"] = false,
@@ -146,6 +222,15 @@ require("oil").setup({
 })
 require("diffview").setup()
 require("fzf-lua").setup({
+  keymap = {
+    fzf = {
+      -- Send *all* results to the quickfix list in one keystroke (works for
+      -- every picker, including the LSP definition/reference/implementation
+      -- pickers). Cycle the entries afterwards with :cnext / :cprev (]q / [q).
+      -- (`alt-q` still sends only the selected entries; `alt-a` toggles all.)
+      ["ctrl-q"] = "select-all+accept",
+    },
+  },
   -- Workaround for an upstream fzf-lua bug: the branches/worktrees line
   -- highlighters reference the global `FzfLua`, which is undefined in the
   -- `-u NONE` multiprocess child, so the transform errors, yields no lines,
@@ -156,6 +241,9 @@ require("fzf-lua").setup({
     worktrees = { multiprocess = false },
   },
 })
+-- Route vim.ui.select through fzf-lua so the native code-action picker (gra)
+-- and any other ui.select prompt use fzf's fuzzy UI.
+require("fzf-lua").register_ui_select()
 require("gitsigns").setup({
   on_attach = function(buffer)
     local gitsigns = require("gitsigns")
@@ -220,6 +308,10 @@ require("blink.cmp").setup({
     documentation = { auto_show = true },
     ghost_text = { enabled = false },
   },
+  signature = {
+    enabled = true,
+    window = { border = "rounded" },
+  },
   sources = {
     default = { "lsp", "path", "snippets", "buffer" },
   },
@@ -239,6 +331,33 @@ vim.api.nvim_create_autocmd("User", {
   end,
   desc = "Show Copilot after the completion menu closes",
 })
+
+-- Language tooling: mason-managed servers/formatters/debuggers, native LSP,
+-- formatting, debugging, and test running. Order matters: mason first so its
+-- bin dir is on PATH before the LSP/formatters resolve their executables.
+require("tools").setup()
+require("lsp").setup()
+require("formatting").setup()
+
+-- nvim-dap and neotest are only useful once you're editing Python or C#, and
+-- they're the heaviest part of startup. Defer their setup to the first such
+-- buffer (runs once). This also covers `nvim foo.py` since FileType fires
+-- after this autocmd is registered.
+do
+  local loaded = false
+  vim.api.nvim_create_autocmd("FileType", {
+    pattern = { "python", "cs" },
+    callback = function()
+      if loaded then
+        return
+      end
+      loaded = true
+      require("debugging").setup()
+      require("testing").setup()
+    end,
+    desc = "Lazy-load DAP + neotest on first Python/C# buffer",
+  })
+end
 
 -- Filetype-specific settings
 vim.api.nvim_create_autocmd("FileType", {

@@ -9,9 +9,25 @@
 
 local M = {}
 
-local SEP_R = "" -- powerline right-facing separator (U+E0B0)
-local SEP_L = "" -- powerline left-facing separator (U+E0B2)
-local BRANCH = "" -- branch glyph (U+E0A0)
+-- Nerd-font glyphs, written as raw UTF-8 byte escapes so the literal characters
+-- can't be silently stripped from the source file by an editor/transfer.
+local SEP_R = "\238\130\176" -- powerline right-facing separator (U+E0B0)
+local SEP_L = "\238\130\178" -- powerline left-facing separator (U+E0B2)
+local THIN_R = "\238\130\177" -- thin right-facing chevron (U+E0B1)
+local BRANCH = "\238\130\160" -- branch glyph (U+E0A0)
+local LOCK = "\238\130\162" -- padlock glyph (U+E0A2)
+
+-- Accent colour per buffer kind, applied to the outer chips + their arrows:
+--   ""  -> normal buffer (blue), "G" -> terminal (green), "R" -> readonly (red)
+local function accent_suffix(buf)
+  if vim.bo[buf].buftype == "terminal" then
+    return "G"
+  end
+  if vim.bo[buf].readonly then
+    return "R"
+  end
+  return ""
+end
 
 -- Define the segment highlight groups from luna's palette. Reapplied on
 -- ColorScheme so a theme switch doesn't wipe them.
@@ -25,27 +41,57 @@ function M.setup_highlights()
     opts.fg, opts.bg = fg, bg
     vim.api.nvim_set_hl(0, name, opts)
   end
-  hl("StBuf", p.bg, p.func, { bold = true }) -- buffer-number chip
+  -- Constant middle segments.
   hl("StBranch", p.grey_light, p.surface) -- branch segment
   hl("StFile", p.fg, p.bg_alt) -- filename body
   hl("StFlag", p.keyword, p.bg_alt, { bold = true }) -- modified/readonly flags
   hl("StFill", p.fg, p.bg_alt) -- middle stretch
-  hl("StRight", p.bg, p.func, { bold = true }) -- position chip
-  -- separators: fg = colour of the segment the arrow "belongs" to
-  hl("StSepBufBranch", p.func, p.surface) -- buf -> branch
-  hl("StSepBufFile", p.func, p.bg_alt) -- buf -> file (no branch)
   hl("StSepBranchFile", p.surface, p.bg_alt) -- branch -> file
-  hl("StSepRight", p.func, p.bg_alt) -- file -> position chip
-  hl("StInactive", p.comment, p.bg_alt) -- whole line when window inactive
+  -- Accent-coloured chips + their separators, one set per buffer kind.
+  -- Separator fg = colour of the chip the arrow "belongs" to.
+  local accents = { [""] = p.func, G = p.ok, R = p.error }
+  for sfx, accent in pairs(accents) do
+    hl("StBuf" .. sfx, p.bg, accent, { bold = true }) -- buffer-number chip
+    hl("StRight" .. sfx, p.bg, accent, { bold = true }) -- position chip
+    hl("StSepBufBranch" .. sfx, accent, p.surface) -- buf -> branch
+    hl("StSepBufFile" .. sfx, accent, p.bg_alt) -- buf -> file (no branch)
+    hl("StSepRight" .. sfx, accent, p.bg_alt) -- file -> position chip
+  end
+
+  -- Inactive window: same segment structure, but greyscale instead of the blue
+  -- accent. The buffer chip and branch share one grey (surface) and are divided
+  -- by a thin chevron rather than a hard colour transition; the file path drops
+  -- to a darker grey so the branch stays visually distinct from it.
+  hl("StBufI", p.grey_light, p.surface) -- buffer-number chip (branch grey)
+  hl("StChevI", p.grey, p.surface) -- thin chevron: buf -> branch (same grey)
+  hl("StBranchI", p.grey_light, p.surface) -- branch segment
+  hl("StRightI", p.grey_light, p.surface) -- position chip (branch grey)
+  hl("StFileI", p.grey_light, p.bg_alt) -- filename body
+  hl("StFlagI", p.grey, p.bg_alt) -- flags
+  hl("StFillI", p.grey, p.bg_alt) -- middle stretch
+  hl("StSepBufFileI", p.surface, p.bg_alt) -- buf -> file (no branch)
+  hl("StSepBranchFileI", p.surface, p.bg_alt) -- branch -> file
+  hl("StSepRightI", p.surface, p.bg_alt) -- file -> position chip
 end
 
 local function esc(s)
   return (s:gsub("%%", "%%%%"))
 end
 
-local function win_width()
+-- The window/buffer this statusline is being drawn for. With a global `%!`
+-- statusline, Lua's `expand('%')`/`vim.bo`/`vim.b` still refer to the *actually
+-- current* buffer, so inactive windows would otherwise all report the active
+-- buffer. Resolve everything through `g:statusline_winid` instead.
+local function ctx()
   local win = vim.g.statusline_winid
-  if win and win ~= 0 and vim.api.nvim_win_is_valid(win) then
+  if not win or win == 0 or not vim.api.nvim_win_is_valid(win) then
+    win = vim.api.nvim_get_current_win()
+  end
+  return win, vim.api.nvim_win_get_buf(win)
+end
+
+local function win_width(win)
+  if win and vim.api.nvim_win_is_valid(win) then
     return vim.api.nvim_win_get_width(win)
   end
   return vim.o.columns
@@ -53,8 +99,8 @@ end
 
 -- Branch, capped to a share of the window width and truncated at the end so the
 -- start (ticket id / prefix) stays readable.
-local function branch(width)
-  local b = vim.b.gitsigns_head
+local function branch(buf, width)
+  local b = vim.b[buf].gitsigns_head
   if not b or b == "" then
     return nil
   end
@@ -67,16 +113,17 @@ end
 
 -- Path relative to cwd, with the directory compacted to first letters and the
 -- filename kept whole.
-local function path()
-  local bt = vim.bo.buftype
+local function path(buf)
+  local name = vim.api.nvim_buf_get_name(buf)
+  local bt = vim.bo[buf].buftype
   if bt ~= "" then
-    local t = vim.fn.expand("%:t")
+    local t = vim.fn.fnamemodify(name, ":t")
     return t ~= "" and t or ("[" .. bt .. "]")
   end
-  local full = vim.fn.expand("%:.")
-  if full == "" then
+  if name == "" then
     return "[No Name]"
   end
+  local full = vim.fn.fnamemodify(name, ":.")
   local tail = vim.fn.fnamemodify(full, ":t")
   local head = vim.fn.fnamemodify(full, ":h")
   if head == "." or head == "" then
@@ -85,35 +132,56 @@ local function path()
   return vim.fn.pathshorten(head) .. "/" .. tail
 end
 
+local function flags(buf)
+  local s = ""
+  if vim.bo[buf].modified then
+    s = s .. "  +"
+  end
+  if vim.bo[buf].readonly then
+    s = s .. "  " .. LOCK
+  end
+  return s
+end
+
 function M.active()
-  local width = win_width()
-  local br = branch(width)
-  local out = { "%#StBuf# %n " }
+  local win, buf = ctx()
+  local width = win_width(win)
+  local sfx = accent_suffix(buf)
+  local br = branch(buf, width)
+  local out = { "%#StBuf" .. sfx .. "# %n " }
   if br then
-    out[#out + 1] = "%#StSepBufBranch#" .. SEP_R
+    out[#out + 1] = "%#StSepBufBranch" .. sfx .. "#" .. SEP_R
     out[#out + 1] = "%#StBranch# " .. BRANCH .. " " .. esc(br) .. " "
     out[#out + 1] = "%#StSepBranchFile#" .. SEP_R
   else
-    out[#out + 1] = "%#StSepBufFile#" .. SEP_R
+    out[#out + 1] = "%#StSepBufFile" .. sfx .. "#" .. SEP_R
   end
   -- `%<` marks where truncation starts: the directory prefix is eaten first.
-  out[#out + 1] = "%#StFile# %<" .. esc(path())
-  out[#out + 1] = "%#StFlag#%{&modified?'  +':''}%{&readonly?'  ':''}"
+  out[#out + 1] = "%#StFile# %<" .. esc(path(buf))
+  out[#out + 1] = "%#StFlag#" .. esc(flags(buf))
   out[#out + 1] = "%#StFill#%="
-  out[#out + 1] = "%#StSepRight#" .. SEP_L
-  out[#out + 1] = "%#StRight# %l:%c  %P "
+  out[#out + 1] = "%#StSepRight" .. sfx .. "#" .. SEP_L
+  out[#out + 1] = "%#StRight" .. sfx .. "# %l:%c  %P "
   return table.concat(out)
 end
 
 function M.inactive()
-  local br = branch(win_width())
-  local out = { "%#StInactive# %n  " }
+  local win, buf = ctx()
+  local width = win_width(win)
+  local br = branch(buf, width)
+  local out = { "%#StBufI# %n " }
   if br then
-    out[#out + 1] = esc(br) .. "  "
+    out[#out + 1] = "%#StChevI#" .. THIN_R .. " "
+    out[#out + 1] = "%#StBranchI#" .. BRANCH .. " " .. esc(br) .. " "
+    out[#out + 1] = "%#StSepBranchFileI#" .. SEP_R
+  else
+    out[#out + 1] = "%#StSepBufFileI#" .. SEP_R
   end
-  out[#out + 1] = "%<" .. esc(path())
-  out[#out + 1] = "%{&modified?'  +':''}%="
-  out[#out + 1] = " %l:%c  %P "
+  out[#out + 1] = "%#StFileI# %<" .. esc(path(buf))
+  out[#out + 1] = "%#StFlagI#" .. esc(flags(buf))
+  out[#out + 1] = "%#StFillI#%="
+  out[#out + 1] = "%#StSepRightI#" .. SEP_L
+  out[#out + 1] = "%#StRightI# %l:%c  %P "
   return table.concat(out)
 end
 
