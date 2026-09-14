@@ -39,16 +39,6 @@ vim.opt.ttimeoutlen = 100
 
 vim.pack.add({
   "https://github.com/WTFox/luna.nvim",
-  "https://github.com/rebelot/kanagawa.nvim",
-  "https://github.com/EdenEast/nightfox.nvim",
-  "https://github.com/folke/tokyonight.nvim",
-  "https://github.com/neanias/everforest-nvim",
-  "https://github.com/sainnhe/sonokai",
-  "https://github.com/loctvl842/monokai-pro.nvim",
-  "https://github.com/marko-cerovac/material.nvim",
-  "https://github.com/ellisonleao/gruvbox.nvim",
-  "https://github.com/Mofiqul/vscode.nvim",
-  "https://github.com/RRethy/base16-nvim",
   "https://github.com/zbirenbaum/copilot.lua",
   "https://github.com/folke/sidekick.nvim",
   "https://github.com/neovim/nvim-lspconfig",
@@ -62,14 +52,12 @@ vim.pack.add({
   "https://github.com/rafamadriz/friendly-snippets",
   "https://github.com/lewis6991/gitsigns.nvim",
   "https://github.com/sindrets/diffview.nvim",
-  "https://github.com/NeogitOrg/neogit",
   "https://github.com/ibhagwan/fzf-lua",
   "https://github.com/kylechui/nvim-surround",
   "https://github.com/tpope/vim-eunuch",
+  "https://github.com/tpope/vim-fugitive",
   "https://github.com/barrettruth/canola.nvim", -- oil.nvim fork with fixes (provides the `oil` module)
 })
-
-require("everforest").setup({background = "hard"})
 
 -- Treesitter (main branch): install parsers, enable highlighting and textobjects
 require("nvim-treesitter").install({
@@ -157,11 +145,15 @@ require("oil").setup({
   },
 })
 require("diffview").setup()
-require("fzf-lua").setup()
-require("neogit").setup({
-  integrations = {
-    diffview = true,
-    fzf_lua = true,
+require("fzf-lua").setup({
+  -- Workaround for an upstream fzf-lua bug: the branches/worktrees line
+  -- highlighters reference the global `FzfLua`, which is undefined in the
+  -- `-u NONE` multiprocess child, so the transform errors, yields no lines,
+  -- and the picker closes instantly. Running the transform in-process (where
+  -- the `FzfLua` global exists) avoids it.
+  git = {
+    branches = { multiprocess = false },
+    worktrees = { multiprocess = false },
   },
 })
 require("gitsigns").setup({
@@ -311,10 +303,14 @@ end, { desc = "Search project text" })
 vim.keymap.set("n", "<leader>b", function()
   require("fzf-lua").buffers()
 end, { desc = "Find buffers" })
-vim.keymap.set("n", "<leader>gg", "<Cmd>Neogit<CR>", { desc = "Open Neogit" })
+vim.keymap.set("n", "<leader>gg", "<Cmd>Git<CR>", { desc = "Fugitive status" })
+vim.keymap.set("n", "<leader>ga", "<Cmd>Gwrite<CR>", { desc = "Git stage current file" })
 vim.keymap.set("n", "<leader>gd", "<Cmd>DiffviewOpen<CR>", { desc = "Review Git changes" })
 vim.keymap.set("n", "<leader>gh", "<Cmd>DiffviewFileHistory %<CR>", { desc = "Git history for file" })
 vim.keymap.set("n", "<leader>gb", "<Cmd>Gitsigns blame_line<CR>", { desc = "Git blame line" })
+vim.keymap.set("n", "<leader>gc", function()
+  require("fzf-lua").git_branches()
+end, { desc = "Git branches (switch/checkout)" })
 vim.keymap.set({ "n", "t", "i", "x" }, "<C-.>", function()
   require("sidekick.cli").focus()
 end, { desc = "Sidekick Focus" })
