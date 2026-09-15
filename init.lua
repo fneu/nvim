@@ -92,6 +92,7 @@ vim.pack.add({
   "https://github.com/windwp/nvim-autopairs",
   "https://github.com/folke/todo-comments.nvim",
   "https://github.com/j-hui/fidget.nvim",
+  "https://github.com/MeanderingProgrammer/render-markdown.nvim",
   {
     src = "https://github.com/Saghen/blink.cmp",
     version = vim.version.range("1"),
@@ -222,9 +223,62 @@ wk.add({
 })
 require("luna").setup()
 vim.cmd.colorscheme("luna")
+
+-- luna defines the render-markdown heading groups in two places (groups/syntax
+-- and groups/render_markdown) and the greyer set wins, so only H3 ends up with
+-- a real accent. Override the six levels with distinct foreground-only colors
+-- from luna's palette. render-markdown tints heading *text* via the `*Bg`
+-- groups (applied across the line) and the icon via the plain groups, so set
+-- both to keep icon and text in sync. Reapplied on ColorScheme so it survives
+-- a theme reload.
+local function md_heading_colors()
+  local levels = {
+    { "#e19067" }, -- H1 warm orange (keyword)
+    { "#c4a8d6" }, -- H2 lilac (type)
+    { "#75a1c7" }, -- H3 blue (func)
+    { "#6fbe80" }, -- H4 green (ok)
+    { "#c2916a" }, -- H5 amber (signal)
+    { "#b8b8b8" }, -- H6 grey (grey_pale)
+  }
+  for i, hl in ipairs(levels) do
+    vim.api.nvim_set_hl(0, "RenderMarkdownH" .. i, { fg = hl[1] })
+    vim.api.nvim_set_hl(0, "RenderMarkdownH" .. i .. "Bg", { fg = hl[1] })
+  end
+end
+md_heading_colors()
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = md_heading_colors,
+  desc = "Reapply render-markdown heading colors after a colorscheme change",
+})
 require("statusline").setup()
 require("nvim-autopairs").setup({})
 require("fidget").setup({})
+require("render-markdown").setup({
+  -- The rendered list/checkbox/heading icons already sit in the buffer, so the
+  -- gutter signs just duplicate them. Turn signs off entirely.
+  sign = { enabled = false },
+})
+
+-- Toggle a Markdown task-list checkbox on the cursor's line: `[ ]` <-> `[x]`.
+-- Buffer-local to markdown so <leader>c stays free elsewhere.
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "markdown",
+  callback = function(args)
+    vim.keymap.set("n", "<leader>c", function()
+      local line = vim.api.nvim_get_current_line()
+      local new
+      if line:match("%[ %]") then
+        new = line:gsub("%[ %]", "[x]", 1)
+      elseif line:match("%[[xX]%]") then
+        new = line:gsub("%[[xX]%]", "[ ]", 1)
+      else
+        return
+      end
+      vim.api.nvim_set_current_line(new)
+    end, { buffer = args.buf, desc = "Toggle task-list checkbox" })
+  end,
+  desc = "Markdown checkbox toggle keymap",
+})
 local todo = require("todo-comments")
 todo.setup({})
 vim.keymap.set("n", "]t", function()
