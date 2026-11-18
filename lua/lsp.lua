@@ -90,6 +90,15 @@ function M.setup()
   vim.lsp.config("ruff", {})
   vim.lsp.enable({ "basedpyright", "ruff" })
 
+  -- Terraform: terraform-ls (HashiCorp's official server), mirroring the VS
+  -- Code HashiCorp Terraform extension -- completion, hover, go-to-definition,
+  -- diagnostics/validation and reference codelens (the latter enabled by
+  -- lspconfig's default on_attach). terraform-ls shells out to the `terraform`
+  -- binary, so it (and conform's terraform_fmt) need `terraform` on PATH.
+  -- Config goes through init_options, not settings (terraform-ls ignores
+  -- workspace/didChangeConfiguration); the defaults are fine, so just enable.
+  vim.lsp.enable("terraformls")
+
   -- C#: Roslyn. roslyn.nvim auto-enables on cs files and locates the
   -- mason-installed server; extra settings go through vim.lsp.config("roslyn").
   require("roslyn").setup({})

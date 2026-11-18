@@ -43,6 +43,13 @@ vim.opt.updatetime = 400
 vim.opt.showmode = false
 vim.opt.clipboard = "unnamedplus"
 
+-- Let bells through. Neovim defaults to belloff=all, which swallows the bell a
+-- :terminal child (e.g. the Copilot CLI in sidekick) emits when it needs input.
+-- With this cleared and 'novisualbell', Neovim forwards a real BEL to the outer
+-- terminal, so Windows Terminal can flash the taskbar/tab (needs bellStyle to
+-- include "window"/"taskbar").
+vim.opt.belloff = ""
+
 -- Treesitter-based folding, folds open by default
 vim.opt.foldmethod = "expr"
 vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
@@ -132,6 +139,7 @@ require("nvim-treesitter").install({
   "javascript", "typescript", "tsx", "json", "yaml", "toml", "xml",
   "diff", "git_config", "gitcommit", "gitignore",
   "bash", "haskell", "powershell", "dockerfile",
+  "terraform", "hcl",
 })
 
 vim.api.nvim_create_autocmd("FileType", {

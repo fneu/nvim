@@ -10,6 +10,7 @@ M.ensure_installed = {
   "basedpyright", -- Python: types, hover, navigation
   "ruff", -- Python: linting + fixes (second LSP)
   "roslyn-language-server", -- C#: consumed by roslyn.nvim
+  "terraform-ls", -- Terraform / HCL (HashiCorp's official server)
   -- Formatters
   "black", -- Python
   "jq", -- JSON (on demand)

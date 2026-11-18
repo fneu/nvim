@@ -10,6 +10,10 @@ function M.setup()
     formatters_by_ft = {
       python = { "black" },
       json = { "jq" },
+      -- Terraform: `terraform fmt` (needs the terraform CLI on PATH), matching
+      -- the HashiCorp extension's format-on-save. tfvars is also valid HCL.
+      terraform = { "terraform_fmt" },
+      ["terraform-vars"] = { "terraform_fmt" },
       -- xmllint ships with libxml2; used on demand only (not in mason).
       xml = { "xmllint" },
       -- C# has no entry here: it formats through the Roslyn LSP, which
@@ -17,7 +21,7 @@ function M.setup()
     },
     format_on_save = function(bufnr)
       local ft = vim.bo[bufnr].filetype
-      if ft == "python" then
+      if ft == "python" or ft == "terraform" or ft == "terraform-vars" then
         return { timeout_ms = 3000, lsp_format = "never" }
       elseif ft == "cs" then
         return { timeout_ms = 3000, lsp_format = "fallback" }
